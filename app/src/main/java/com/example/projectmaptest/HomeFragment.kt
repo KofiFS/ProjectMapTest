@@ -4,30 +4,22 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Address
+import android.location.Geocoder
 import android.os.Bundle
-import android.view.*
 import android.widget.*
-import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.RecyclerView
-import com.firebase.ui.database.FirebaseRecyclerOptions
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import android.location.Geocoder
-import android.media.Image
 import android.widget.Toast
-import java.io.IOException
 import androidx.core.view.GravityCompat
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.net.PlacesClient
@@ -39,6 +31,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import com.google.android.gms.maps.model.MarkerOptions
+import java.io.IOException
+import androidx.appcompat.widget.SearchView
 
 class HomeFragment : Fragment(), OnMapReadyCallback {
 
@@ -46,20 +41,20 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
     private lateinit var mMap: GoogleMap
     private lateinit var mMapView: SupportMapFragment
     private val DEFAULT_LOCATION = LatLng(40.7128, -74.0060) // New York City coordinates
-    private var currentDrawerTitle: String = ""
-    private lateinit var recyclerView: RecyclerView
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
-    private val databaseReference = FirebaseDatabase.getInstance().reference.child("locations")
     private lateinit var currentUserEmail: String
     private lateinit var textLongitudeValue: TextView
     private lateinit var textLatitudeValue: TextView
     private lateinit var imageviewSettings: ImageView
 
+    // Creating a variable for search view.
+    private lateinit var searchView: SearchView
 
     // Google Places API client
     private lateinit var placesClient: PlacesClient
 
+    // Sets the Preferfed Values
     private val PREFS_NAME = "UserLocationPrefs"
     private val PREF_LATITUDE = "Latitude"
     private val PREF_LONGITUDE = "Longitude"
@@ -78,7 +73,6 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
     // to check whether sub FAB buttons are visible or not.
     private var isAllFabsVisible: Boolean? = null
 
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -87,10 +81,14 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_home, container, false)
 
+        // Initializing our search view.
+        searchView = view.findViewById(R.id.idSearchView)
+
         // Initialize views
         textLatitudeValue = view.findViewById(R.id.textLatitudeValue) // Initialize textLatitudeValue
         textLongitudeValue = view.findViewById(R.id.textLongitudeValue) // Initialize textLongitudeValue
         imageviewSettings = view.findViewById(R.id.settingsImage)// Initialzie imageView
+
         // Initialize the map view
         mMapView = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mMapView.getMapAsync(this)
@@ -106,6 +104,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         mSendCoordsFab = view.findViewById(R.id.send_coords_fab)
         mASaveLocationFab = view.findViewById(R.id.save_location_fab)
         mOpenDrawerFab = view.findViewById(R.id.open_nav_fab)
+
         // Also register the action name text, of all the FABs.
         SendCoordsText = view.findViewById(R.id.send_coords_action_text)
         SaveLocationText = view.findViewById(R.id.save_location_action_text)
@@ -134,12 +133,11 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
                 mSendCoordsFab.show()
                 mASaveLocationFab.show()
                 mOpenDrawerFab.show()
+                // make the boolean variable true as we
+                // have set the sub FABs visibility to GONE
                 SendCoordsText.visibility = View.VISIBLE
                 SaveLocationText.visibility = View.VISIBLE
                 OpenDrawerText.visibility = View.VISIBLE
-
-                // make the boolean variable true as we
-                // have set the sub FABs visibility to GONE
                 true
             } else {
                 // when isAllFabsVisible becomes true make
@@ -189,7 +187,6 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
             Toast.makeText(requireContext(), "User Location Saved", Toast.LENGTH_SHORT).show()
         }
 
-
         mOpenDrawerFab.setOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
         }
@@ -200,6 +197,54 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         imageviewSettings.setOnClickListener {
             openAppSettings()
         }
+
+        // Adding on query listener for our search view.
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String): Boolean {
+                // Getting the location name from search view.
+                val location = searchView.query.toString()
+
+                // Creating a list of address where we will store the list of all addresses.
+                var addressList: List<Address>? = null
+
+                // Checking if the entered location is null or not.
+                if (location != null || location != "") {
+                    // Creating and initializing a geo coder.
+                    val geocoder = Geocoder(requireContext())
+                    try {
+                        // Getting location from the location name and adding that location to address list.
+                        addressList = geocoder.getFromLocationName(location, 1)
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
+
+                    // Checking if address list is not null and not empty.
+                    if (addressList != null && addressList.isNotEmpty()) {
+                        // Getting the location from our list at the first position.
+                        val address = addressList[0]
+
+                        // Creating a variable for our location where we will add our locations latitude and longitude.
+                        val latLng = LatLng(address.latitude, address.longitude)
+
+                        // Adding marker to that position.
+                        mMap.addMarker(MarkerOptions().position(latLng).title(location))
+
+                        // Animating camera to that position.
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
+                    } else {
+                        // Display a Toast message indicating that the location couldn't be found.
+                        Toast.makeText(requireContext(), "Location not found", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String): Boolean {
+                return false
+            }
+        })
+        // Calling our map fragment to update.
+        mMapView.getMapAsync(this)
 
         return view
     }
@@ -218,8 +263,8 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         navigationView.getHeaderView(0).findViewById<View>(R.id.logoutButton).setOnClickListener {
             logoutUser()
         }
-
     }
+
     private fun saveLocation() {
         // Save latitude and longitude in SharedPreferences
         val sharedPreferences = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -240,7 +285,6 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         return sharedPreferences.getFloat(PREF_LONGITUDE, 0f) // Default value is 0 if not found
     }
 
-
     private fun logoutUser() {
         // Log out the current user and redirect to LoginActivity
         FirebaseAuth.getInstance().signOut()
@@ -249,36 +293,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
             it.finish()
         }
     }
-    private fun setupNavigationDrawer() {
-        // Set up ActionBarDrawerToggle
-        val actionBarDrawerToggle = ActionBarDrawerToggle(
-            activity as AppCompatActivity,
-            drawerLayout,
-            R.string.navigation_drawer_open,
-            R.string.navigation_drawer_close
-        )
-        drawerLayout.addDrawerListener(actionBarDrawerToggle)
-        actionBarDrawerToggle.syncState()
 
-        // Set up navigation item selected listener
-        navigationView.setNavigationItemSelectedListener { menuItem ->
-            // Close the drawer when an item is clicked
-            drawerLayout.closeDrawer(GravityCompat.START)
-
-            // Handle navigation item clicks here
-            val newTitle = menuItem.title.toString()
-            if (newTitle != currentDrawerTitle) {
-                currentDrawerTitle = newTitle
-            }
-
-            true
-        }
-
-        // Display user email in navigation drawer header
-        val user = FirebaseAuth.getInstance().currentUser
-        val userEmailTextView = navigationView.getHeaderView(0).findViewById<TextView>(R.id.userEmailTextView)
-        userEmailTextView.text = user?.email ?: ""
-    }
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
@@ -319,6 +334,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
             updateLocationInfo()
         }
     }
+
     private fun openAppSettings() {
         // Open app settings using intent
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -326,6 +342,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         intent.data = uri
         startActivity(intent)
     }
+
     private fun updateLocationInfo() {
         val centerLatLng = mMap.cameraPosition.target
         val latitude = String.format(Locale.getDefault(), "%.6f", centerLatLng.latitude)
@@ -334,5 +351,4 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         textLatitudeValue.text = latitude
         textLongitudeValue.text = longitude
     }
-
 }

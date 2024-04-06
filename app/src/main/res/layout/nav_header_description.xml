@@ -1,0 +1,27 @@
+<!-- nav_header.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@color/white"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/descriptionTitleTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Description of the Application"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:padding="16dp" />
+    <!-- nav_header_description.xml -->
+    <TextView
+        android:id="@+id/descriptionTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="The application is designed to provide users with features related to location management. It displays the user's coordinates (latitude and longitude) on the top left corner of the screen, allowing them to easily reference their current location. Additionally, users can save their current location within the app, enabling them to revisit the same location later. This saved location persists even after the app is closed or restarted. Moreover, the app allows users to share their current location with others by sending the coordinates via various communication channels. These features empower users to efficiently manage and share their location information for navigation, communication, and other purposes."
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:padding="16dp" />
+</LinearLayout>
